@@ -45,10 +45,12 @@ public class TaskController {
     public String task(TaskForm taskForm, Model model) {
     	
     	//新規登録か更新かを判断する仕掛け
-        
-        //Taskのリストを取得する
-        
-        model.addAttribute("list", "");
+    	taskForm.setNewTask(true);
+
+    	//Taskのリストを取得する
+        List<Task> list = taskService.findAll();
+    	
+        model.addAttribute("list", list);
         model.addAttribute("title", "タスク一覧");
 
         return "task/index";
@@ -62,22 +64,21 @@ public class TaskController {
      * @param principal
      * @return
      */
+    
+    
     @PostMapping("/insert")
     public String insert(
     	@Valid @ModelAttribute TaskForm taskForm,
         BindingResult result,
         Model model) {
     	
-    	//削除してください
-    	Task task = null;
-    	
     	//TaskFormのデータをTaskに格納
-        
+    	Task task = makeTask(taskForm, 0);//今回は特に設定していないので第二引数は0を入れておく。
+    	
         if (!result.hasErrors()) {
-        	
         	//一件挿入後リダイレクト
-        	
-            return "";
+        	taskService.insert(task);
+            return "redirect:/task";
         } else {
             taskForm.setNewTask(true);
             model.addAttribute("taskForm", taskForm);
@@ -102,17 +103,19 @@ public class TaskController {
         Model model) {
 
     	//Taskを取得(Optionalでラップ)
-        
+    	Optional<Task> taskOpt = taskService.getTask(id);
         //TaskFormへの詰め直し
-        
+    	Optional<TaskForm> taskFormOpt = taskOpt.map(t -> makeTaskForm(t));
         //TaskFormがnullでなければ中身を取り出し
+    	if(taskFormOpt.isPresent()) {
+    		taskForm = taskFormOpt.get();
+    	}
 		
-        model.addAttribute("taskForm", "");
+        model.addAttribute("taskForm", taskForm);
         List<Task> list = taskService.findAll();
         model.addAttribute("list", list);
         model.addAttribute("taskId", id);
         model.addAttribute("title", "更新用フォーム");
-
         return "task/index";
     }
     
@@ -134,19 +137,18 @@ public class TaskController {
     	RedirectAttributes redirectAttributes) {
         
     	//TaskFormのデータをTaskに格納
-    	
+    	Task task  =  makeTask(taskForm,taskId);   	
         if (!result.hasErrors()) {
-        	
+        	taskService.update(task);
+        	redirectAttributes.addFlashAttribute("complete", "変更が完了しました");
         	//更新処理、フラッシュスコープの使用、リダイレクト（個々の編集ページ）
-        	
-            return "" ;
+            return "redirect:/task/" + taskId ;
         } else {
             model.addAttribute("taskForm", taskForm);
-            model.addAttribute("title", "タスク一覧");
+            model.addAttribute("taskId", taskId);
+            model.addAttribute("title", "タスク一覧2");
             return "task/index";
         }
-        
-        
     }
 
     /**
@@ -157,12 +159,12 @@ public class TaskController {
      */
     @PostMapping("/delete")
     public String delete(
-    	@RequestParam("taskId") String id,
+    	@RequestParam("taskId") int id,
     	Model model) {
     	
     	//タスクを一件削除しリダイレクト
-    	
-        return "";
+    	taskService.deleteById(id);
+        return "redirect:/task";
     }
 
     /**
@@ -171,24 +173,47 @@ public class TaskController {
      * @param taskId 新規登録の場合は0を指定
      * @return
      */
+
+    
+    
     private Task makeTask(TaskForm taskForm, int taskId) {
-        Task task = new Task();
-        if(taskId != 0) {
-        	task.setId(taskId);
-        }
-        task.setUserId(1);
-        task.setTypeId(taskForm.getTypeId());
-        task.setTitle(taskForm.getTitle());
-        task.setDetail(taskForm.getDetail());
-        task.setDeadline(taskForm.getDeadline());
-        return task;
+    	Task task = new Task();
+    	
+    	//taskIdが設定されていない場合は0を指定
+    	if(taskId != 0) {
+    		task.setId(taskId);
+    	}
+    	
+    	//TaskForm→Taskへの詰め直し
+    	task.setUserId(1);//本来は渡された値を入れる
+    	task.setTypeId(taskForm.getTypeId());
+    	task.setTitle(taskForm.getTitle());
+    	task.setDetail(taskForm.getDetail());
+    	task.setDeadline(taskForm.getDeadline());
+    	return task;
     }
+    
+
+    
+    //    private Task makeTask(TaskForm taskForm, int taskId) {
+//        Task task = new Task();
+//        if(taskId != 0) {
+//        	task.setId(taskId);
+//        }
+//        task.setUserId(1);
+//        task.setTypeId(taskForm.getTypeId());
+//        task.setTitle(taskForm.getTitle());
+//        task.setDetail(taskForm.getDetail());
+//        task.setDeadline(taskForm.getDeadline());
+//        return task;
+//    }
 
     /**
      * TaskのデータをTaskFormに入れて返す
      * @param task
      * @return
      */
+
     private TaskForm makeTaskForm(Task task) {
     	
         TaskForm taskForm = new TaskForm();
