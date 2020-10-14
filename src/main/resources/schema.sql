@@ -25,3 +25,9 @@ CREATE TABLE user (
   tempkey varchar(255) DEFAULT NULL,
   PRIMARY KEY (id)
 );
+
+CREATE TABLE poll (
+  id int(3) NOT NULL AUTO_INCREMENT,
+  vote int(1) NOT NULL,
+  PRIMARY KEY (id)
+)
